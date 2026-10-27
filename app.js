@@ -11,7 +11,8 @@ const PLANS=[
  {id:'lp1',name:'LP1_JG26_Bank',short:'Lernplan 1',start:'04.09.2026',end:'2026-10-21',endTxt:'21.10.2026'},
  {id:'lp2',name:'LP2_JG26_Bank',short:'Lernplan 2',start:'04.09.2026',end:'2026-11-15',endTxt:'15.11.2026'},
  {id:'lp3',name:'LP3_JG26_Bank',short:'Lernplan 3',start:'04.09.2026',end:'2027-01-17',endTxt:'17.01.2027',
-  pre:[{t:'Kontomodelle und Verwaltungsprozesse',topics:[['Privatkundschaft',17],['Firmenkundschaft',43],['Gemeinschaftskonten',18],['Treuhandkonten',36],['Kontenarten',18]]}]}];
+  pre:[{t:'Kontomodelle und Verwaltungsprozesse',topics:[['Privatkundschaft',17],['Firmenkundschaft',43],['Gemeinschaftskonten',18],['Treuhandkonten',36],['Kontenarten',18]]}]},
+ {id:'bs',name:'Berufsschule',short:'Berufsschule',bs:true,sub:'Alle Fächer des ersten Ausbildungsjahres'}];
 const BLOCK1=['Zusammenarbeit und Präsentation','Zusammenarbeit und Präsentation','Zusammenarbeit und Präsentation','Ausbildung und Lernen','Ausbildung und Lernen','Ausbildung und Lernen','Arbeit, Geld und Mitbestimmung','Arbeit, Geld und Mitbestimmung','Arbeit, Geld und Mitbestimmung','Privatrecht','Privatrecht','Staat und Wirtschaft','Staat und Wirtschaft','Staat und Wirtschaft'];
 const TOPICS=[];
 M.forEach((m,i)=>TOPICS.push({key:'lp1-'+i,plan:'lp1',block:BLOCK1[i],t:m.t,s:m.s,
@@ -38,7 +39,7 @@ function summary(){
   const due=dueC().length+dueQ().length;
   return {due_cards:dueC().length,due_questions:dueQ().length,overall:overall(),streak:streak(),xp_today:xpToday(),goal:S.goal,
     weakest:TOPICS.map(t=>({t:t.t,p:mastery(t.key)})).sort((a,b)=>a.p-b.p).slice(0,3),
-    plans:PLANS.map(p=>({plan:p.name,end:p.end,days_left:daysLeft(p.end),open:isOpen(p.id),progress:planProg(p.id)})),
+    plans:PLANS.map(p=>({plan:p.name,end:p.end,days_left:p.bs?null:daysLeft(p.end),open:isOpen(p.id),progress:planProg(p.id)})),
     last_active:Object.keys(S.xp).sort().pop()||null,due_total:due};
 }
 async function pushDb(){try{await dbDoc.set({updated:S.updated,summary:summary(),state:S})}catch(e){}}
@@ -97,7 +98,7 @@ function render(){renderTop();renderNav();app.innerHTML='';({home,lib,plan,topic
 function topicCard(k){const t=T(k),m=mastery(k);
   return `<div class="card tcard" tabindex="0" role="button" data-go='{"v":"topic","k":"${k}"}'><div class="ico" style="background:${hue(k)}">${esc(t.t[0])}</div><div class="mid"><span class="tt">${esc(t.t)}</span><div class="row nw"><span class="meter"><i style="width:${m}%"></i></span><span class="sub">${m} %</span>${starsHtml(nStars(k))}</div></div></div>`}
 function planCard(p){const o=isOpen(p.id),pr=planProg(p.id);
-  return `<div class="card tcard plan" tabindex="0" role="button" data-go='{"v":"plan","id":"${p.id}"}'><div class="mid"><span class="tt">${p.name}</span><span class="sub">${p.start} bis ${p.endTxt}${o?'':' · Inhalte folgen'}</span><div class="row nw"><span class="meter"><i style="width:${pr}%"></i></span><span class="sub">${pr} %</span></div></div><span class="tag">${daysLeft(p.end)} Tage</span></div>`}
+  return `<div class="card tcard plan" tabindex="0" role="button" data-go='{"v":"plan","id":"${p.id}"}'><div class="mid"><span class="tt">${p.name}</span><span class="sub">${p.bs?p.sub+' · '+planTopics(p.id).length+' Themen':p.start+' bis '+p.endTxt+(o?'':' · Inhalte folgen')}</span><div class="row nw"><span class="meter"><i style="width:${pr}%"></i></span><span class="sub">${pr} %</span></div></div>${p.bs?'<span class="tag bs">Fächer</span>':`<span class="tag">${daysLeft(p.end)} Tage</span>`}</div>`}
 const ring=(p,label,sub,size=84)=>{const C=2*Math.PI*34;return `<div class="ring" style="width:${size}px;height:${size}px"><svg viewBox="0 0 84 84" style="width:${size}px;height:${size}px"><circle cx="42" cy="42" r="34" fill="none" stroke="var(--panel2)" stroke-width="8"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C*Math.min(1,p)} ${C}"/></svg><span><div>${label}<small>${sub}</small></div></span></div>`};
 
 /* ---------- Home ---------- */
@@ -110,14 +111,14 @@ function home(){
   <div class="hero"><div><h1>Hallo Yoshi</h1><p class="sub" style="margin:4px 0 0">${xpToday()>=S.goal?'Tagesziel erreicht. Stark.':'Noch '+(S.goal-xpToday())+' XP bis zum Tagesziel.'}</p></div>${ring(xpToday()/S.goal,xpToday(),'von '+S.goal+' XP')}</div>
   <h2 style="margin-top:6px">Weitermachen</h2>${topicCard(next)}
   <div class="card sp"><div><b>${dc} Karteikarten fällig</b><div class="sub">${dq} Testfragen zur Wiederholung bereit</div></div><button class="btn" data-go='{"v":"deck"}'>Üben</button></div>
-  <h2>Deine Lernpläne</h2>${PLANS.slice(0,3).map(planCard).join('')}
+  <h2>Deine Lernpläne</h2>${PLANS.filter(p=>!p.bs).map(planCard).join('')}<h2>Berufsschule</h2>${PLANS.filter(p=>p.bs).map(planCard).join('')}
   <h2>Schwächste Themen</h2>${weak.map(topicCard).join('')}</div>`;
 }
 
 /* ---------- Lernpläne ---------- */
-function lib(){app.innerHTML=`<h1>Lernpläne</h1><p class="sub" style="margin:4px 0 14px">Alle Pläne der Ausbildung</p><div class="stack">${PLANS.slice().reverse().map(planCard).join('')}</div>`}
+function lib(){app.innerHTML=`<h1>Lernpläne</h1><p class="sub" style="margin:4px 0 14px">Alle Pläne der Ausbildung</p><div class="stack">${PLANS.filter(p=>!p.bs).reverse().map(planCard).join('')}</div><h2 style="margin-top:18px">Berufsschule</h2><div class="stack">${PLANS.filter(p=>p.bs).map(planCard).join('')}</div>`}
 function plan(){
-  const p=PLANS.find(x=>x.id===view.id)||PLANS[0],tab=view.tab||'t',tt=planTopics(p.id);
+  const p=PLANS.find(x=>x.id===view.id)||PLANS[0],tab=p.bs?'t':(view.tab||'t'),tt=planTopics(p.id);
   const left=tt.reduce((a,t)=>a+mins(t)*(1-mastery(t.key)/100),0);let body='';
   if(!tt.length){
     body=(p.pre?p.pre.map(b=>`<div class="blk">${b.t}</div><div class="stack">${b.topics.map(([n,m])=>`<div class="card tcard lock"><div class="ico" style="background:${hue(n)}">${n[0]}</div><div class="mid"><span class="tt">${n}</span><span class="sub">${m} min · Inhalt folgt</span></div></div>`).join('')}</div>`).join(''):'')+'<p class="sub" style="margin-top:16px">Dieser Plan ist noch nicht eingelesen. Zusammenfassung, Karten und Tests entstehen, sobald die Inhalte da sind.</p>';
@@ -129,9 +130,9 @@ function plan(){
     for(let k=0;k<tt.length;k+=per){const d=new Date();d.setDate(d.getDate()+k/per);rows.push([d,tt.slice(k,k+per)])}
     body=`<p class="sub">${tt.length} Themen, gleichmäßig bis zum ${p.endTxt} verteilt.</p><div class="stack">${rows.map(([d,ix])=>`<div class="card"><b>${d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})}</b>${ix.map(t=>`<div class="sp" style="margin-top:8px"><span class="tt link" tabindex="0" role="button" data-go='{"v":"topic","k":"${t.key}"}'>${esc(t.t)}</span>${nStars(t.key)>=2?'<span class="tag">erledigt</span>':`<span class="tag">${mins(t)} min</span>`}</div>`).join('')}</div>`).join('')}</div>`;
   }
-  app.innerHTML=`<button class="back" data-go='{"v":"lib"}'>‹ Lernpläne</button><h1>${p.name}</h1>
-  <div class="row" style="margin:8px 0 14px"><span class="tag">Noch ${daysLeft(p.end)} Tage</span><span class="tag">${tt.length?fmtMin(left)+' übrig':'Inhalte folgen'}</span><span class="tag">${planProg(p.id)} % gelernt</span></div>
-  ${tt.length?`<button class="btn block" data-go='{"v":"mix","plan":"${p.id}"}'>Schnell-Quiz (10 Fragen, sofort Feedback)</button><button class="btn alt block" style="margin-top:8px" data-go='{"v":"exam","plan":"${p.id}"}'>Übungstest</button><div class="tabs"><button data-go='{"v":"plan","id":"${p.id}","tab":"t"}' aria-selected="${tab==='t'}">Themen</button><button data-go='{"v":"plan","id":"${p.id}","tab":"z"}' aria-selected="${tab==='z'}">Zeitplan</button></div>`:''}${body}`;
+  app.innerHTML=`<button class="back" data-go='{"v":"lib"}'>‹ Lernpläne</button><h1>${p.name}</h1>${p.bs?'<p class="sub" style="margin:4px 0 0">Lernfolien und Quizfragen zu deinen Unterrichtsfächern, getrennt von den Lernplänen.</p>':''}
+  <div class="row" style="margin:8px 0 14px">${p.bs?'':`<span class="tag">Noch ${daysLeft(p.end)} Tage</span>`}<span class="tag">${tt.length?fmtMin(left)+' übrig':'Inhalte folgen'}</span><span class="tag">${planProg(p.id)} % gelernt</span></div>
+  ${tt.length?`<button class="btn block" data-go='{"v":"mix","plan":"${p.id}"}'>Schnell-Quiz (10 Fragen, sofort Feedback)</button><button class="btn alt block" style="margin-top:8px" data-go='{"v":"exam","plan":"${p.id}"}'>Übungstest</button><div class="tabs"><button data-go='{"v":"plan","id":"${p.id}","tab":"t"}' aria-selected="${tab==='t'}">Themen</button>${p.bs?'':`<button data-go='{"v":"plan","id":"${p.id}","tab":"z"}' aria-selected="${tab==='z'}">Zeitplan</button>`}</div>`:''}${body}`;
 }
 
 /* ---------- Thema ---------- */
@@ -279,7 +280,7 @@ function forecast(){
   const since=Math.max(1,Math.ceil((Date.now()-new Date(days[0]+'T00:00:00'))/DAY)+1),o=overall();
   if(o>=70)return {txt:'Du bist über 70 %. Weiter wiederholen, damit es hält.',cls:'ok'};
   const rate=o/since;if(rate<=0)return {txt:'Noch kein messbarer Fortschritt.',cls:''};
-  const need=Math.ceil((70-o)/rate),end=new Date(Date.now()+need*DAY),dl=PLANS.filter(p=>isOpen(p.id)).map(p=>daysLeft(p.end)).sort((a,b)=>a-b)[0];
+  const need=Math.ceil((70-o)/rate),end=new Date(Date.now()+need*DAY),dl=PLANS.filter(p=>isOpen(p.id)&&!p.bs).map(p=>daysLeft(p.end)).sort((a,b)=>a-b)[0];
   const okTxt=dl==null?'':need<=dl?' Das passt vor den nächsten Termin.':' Das ist knapp, ein paar Minuten mehr pro Tag helfen.';
   return {txt:`Bei deinem Tempo erreichst du 70 % am ${end.toLocaleDateString('de-DE')}.${okTxt}`,cls:need<=(dl??99)?'ok':'warn'};
 }
