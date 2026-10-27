@@ -87,11 +87,11 @@ document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.tar
 function applyTheme(){const r=document.documentElement;if(S.theme==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',S.theme)}
 function renderTop(){$('#top').innerHTML=`<span class="brand">Bank Lernplattform</span><span class="chips"><span class="chip">Serie <b>${streak()}</b></span><span class="chip">XP <b>${xpToday()}</b>/${S.goal}</span></span>`}
 function renderNav(){
-  const g={home:'home',lib:'lib',plan:'lib',topic:'lib',learn:'lib',practice:'lib',cards:'cards',deck:'cards',prog:'prog'}[view.v]||'more';
+  const g={home:'home',lib:'lib',plan:'lib',topic:'lib',learn:'lib',practice:'lib',mix:'lib',cards:'cards',deck:'cards',prog:'prog'}[view.v]||'more';
   const d=dueC().length;
   $('#navin').innerHTML=[['home','Home'],['lib','Pläne'],['cards','Karten'],['prog','Fortschritt'],['more','Mehr']].map(([k,l])=>`<button data-go='{"v":"${k==='cards'?'deck':k}"}' ${g===k?'aria-current="true"':''}><svg viewBox="0 0 24 24"><path d="${ICONS[k==='prog'?'prog':k]}"/></svg>${l}${k==='cards'&&d?`<span class="dot">${d>99?'99+':d}</span>`:''}</button>`).join('');
 }
-function render(){renderTop();renderNav();app.innerHTML='';({home,lib,plan,topic,learn,practice,cards,deck,exam,prog,gloss,more,settings}[view.v])()}
+function render(){renderTop();renderNav();app.innerHTML='';({home,lib,plan,topic,learn,practice,mix,cards,deck,exam,prog,gloss,more,settings}[view.v])()}
 
 /* ---------- Bausteine ---------- */
 function topicCard(k){const t=T(k),m=mastery(k);
@@ -131,7 +131,7 @@ function plan(){
   }
   app.innerHTML=`<button class="back" data-go='{"v":"lib"}'>‹ Lernpläne</button><h1>${p.name}</h1>
   <div class="row" style="margin:8px 0 14px"><span class="tag">Noch ${daysLeft(p.end)} Tage</span><span class="tag">${tt.length?fmtMin(left)+' übrig':'Inhalte folgen'}</span><span class="tag">${planProg(p.id)} % gelernt</span></div>
-  ${tt.length?`<button class="btn block" data-go='{"v":"exam","plan":"${p.id}"}'>Übungstest</button><div class="tabs"><button data-go='{"v":"plan","id":"${p.id}","tab":"t"}' aria-selected="${tab==='t'}">Themen</button><button data-go='{"v":"plan","id":"${p.id}","tab":"z"}' aria-selected="${tab==='z'}">Zeitplan</button></div>`:''}${body}`;
+  ${tt.length?`<button class="btn block" data-go='{"v":"mix","plan":"${p.id}"}'>Schnell-Quiz (10 Fragen, sofort Feedback)</button><button class="btn alt block" style="margin-top:8px" data-go='{"v":"exam","plan":"${p.id}"}'>Übungstest</button><div class="tabs"><button data-go='{"v":"plan","id":"${p.id}","tab":"t"}' aria-selected="${tab==='t'}">Themen</button><button data-go='{"v":"plan","id":"${p.id}","tab":"z"}' aria-selected="${tab==='z'}">Zeitplan</button></div>`:''}${body}`;
 }
 
 /* ---------- Thema ---------- */
@@ -166,12 +166,17 @@ function quizRun(box,items,fin){
       const b=document.createElement('button');b.className='opt';b.textContent=txt;if(ok)b.dataset.c=1;
       b.onclick=()=>{
         if(done)return;done=true;o.querySelectorAll('.opt').forEach(x=>x.setAttribute('aria-disabled','true'));gradeQ(it.id,ok);
-        if(ok){b.classList.add('ok');right++;addXp(10);fb.innerHTML='<b>Richtig.</b> '+esc(it.e)}
-        else{b.classList.add('bad');o.querySelector('[data-c]').classList.add('ok');fb.innerHTML='<b>Nicht ganz.</b> '+esc(it.e)}
+        if(ok){b.classList.add('ok');right++;addXp(10);fb.innerHTML='<div class="vd good">✓ Richtig!</div>'+esc(it.e)}
+        else{b.classList.add('bad');o.querySelector('[data-c]').classList.add('ok');fb.innerHTML='<div class="vd bad">✗ Falsch. Richtig ist: '+esc(o.querySelector('[data-c]').textContent)+'</div>'+esc(it.e)}
         const n=document.createElement('button');n.className='btn block';n.textContent=k+1<items.length?'Weiter':'Ergebnis';n.onclick=()=>{k++;step()};nx.appendChild(n);renderTop();renderNav()};
       o.appendChild(b)});
   };step();
 }
+function mix(){
+  const p=PLANS.find(x=>x.id===view.plan)||PLANS[0],qs=shuffle(planTopics(p.id).flatMap(t=>t.q)).slice(0,10);
+  app.innerHTML=`<div class="sp"><button class="back" data-go='{"v":"plan","id":"${p.id}"}'>✕ Schließen</button><span class="sub">Schnell-Quiz ${p.short}</span></div><div id="qz"></div>`;
+  quizRun($('#qz'),qs,r=>{logAdd('Schnell-Quiz '+p.short,r+' von '+qs.length);renderTop();renderNav();
+    $('#qz').innerHTML=`<div class="big">${r} von ${qs.length} richtig</div><div class="stack" style="margin-top:16px"><button class="btn block" data-go='{"v":"mix","plan":"${p.id}"}'>Neues Quiz</button><button class="btn alt block" data-go='{"v":"plan","id":"${p.id}"}'>Zurück zum Plan</button></div>`})}
 function practice(){
   const t=T(view.k);S.last=t.key;save();
   app.innerHTML=`<div class="sp"><button class="back" data-go='{"v":"topic","k":"${t.key}"}'>✕ Schließen</button><span class="sub">${esc(t.t)}</span></div><div id="qz"></div>`;
